@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Simulador EGEL-PLUS PSI - Diagnóstico e Intervención</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Modern CSS reset and Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4F8A8B;
+      --secondary: #FBD46D;
+      --accent: #F67280;
+      --bg: #F6F5F5;
+      --success: #43aa8b;
+      --error: #ef476f;
+      --neutral: #f8f8f8;
+      --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    body {
+      font-family: 'Montserrat', Arial, sans-serif;
+      background: var(--bg);
+      margin: 0;
+      padding: 0;
+      color: #222;
+    }
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 1.5rem 2rem;
+      text-align: center;
+      letter-spacing: 1px;
+      font-size: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    .tabs {
+      display: flex;
+      justify-content: center;
+      margin-top: 32px;
+    }
+    .tab-btn {
+      padding: 1rem 2rem;
+      background: var(--neutral);
+      border: none;
+      outline: none;
+      font-size: 1.1rem;
+      cursor: pointer;
+      margin: 0 8px;
+      border-radius: 10px 10px 0 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      transition: background 0.2s, color 0.2s;
+      color: var(--primary);
+      font-weight: bold;
+    }
+    .tab-btn.active {
+      background: var(--secondary);
+      color: var(--accent);
+      box-shadow: 0 2px 8px rgba(249, 190, 80, 0.12);
+    }
+    .tab-content {
+      display: none;
+      background: #fff;
+      margin: 0 auto 32px auto;
+      padding: 2rem;
+      max-width: 760px;
+      border-radius: 0 0 16px 16px;
+      box-shadow: var(--shadow);
+      animation: fadeIn 0.6s;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from {opacity: 0;}
+      to {opacity: 1;}
+    }
+    .question-block {
+      margin-bottom: 2.5rem;
+      padding: 1.5rem 1.2rem;
+      background: var(--neutral);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .question-title {
+      font-size: 1.13rem;
+      font-weight: bold;
+      margin-bottom: 0.8rem;
+      color: var(--primary);
+    }
+    .options {
+      margin-bottom: 0.5rem;
+    }
+    .option-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      cursor: pointer;
+      padding: 0.45rem 1rem;
+      border-radius: 8px;
+      transition: background 0.2s;
+      border: 1px solid transparent;
+    }
+    .option-label input[type="radio"], .option-label input[type="checkbox"] {
+      accent-color: var(--primary);
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    .option-label.selected {
+      background: var(--secondary);
+      border-color: var(--primary);
+    }
+    .relation-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 0.8rem;
+    }
+    .relation-table th, .relation-table td {
+      padding: 0.4rem 0.7rem;
+      border-bottom: 1px solid #eee;
+    }
+    .relation-select {
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      margin-left: 0.8rem;
+    }
+    .feedback {
+      margin-top: 0.6rem;
+      padding: 0.8rem 1rem;
+      border-radius: 8px;
+      background: #e9fff7;
+      color: var(--success);
+      font-size: 1rem;
+      display: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .feedback.error {
+      background: #ffeaea;
+      color: var(--error);
+    }
+    .feedback .title {
+      font-weight: bold;
+      margin-bottom: 0.3rem;
+      display: block;
+    }
+    .open-response {
+      width: 90%;
+      min-height: 40px;
+      font-size: 1rem;
+      border-radius: 7px;
+      border: 1px solid #bbb;
+      padding: 0.5rem 0.8rem;
+      margin-bottom: 0.6rem;
+      margin-top: 0.4rem;
+      resize: vertical;
+    }
+    .check-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.6rem 1.3rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background 0.2s;
+    }
+    .check-btn:disabled {
+      background: #bcd0c7;
+      cursor: not-allowed;
+    }
+    /* Responsive */
+    @media (max-width: 600px) {
+      .tab-content {
+        padding: 1rem;
+      }
+      .question-block {
+        padding: 0.7rem 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+<header>
+  Simulador Interactivo EGEL-PLUS PSI &mdash; Diagnóstico e Intervención Psicológica
+</header>
+<div class="tabs">
+  <button class="tab-btn active" data-tab="facil">Preguntas Básicas (1-12)</button>
+  <button class="tab-btn" data-tab="dificil">Preguntas Avanzadas (13-24)</button>
+</div>
+<div id="facil" class="tab-content active"></div>
+<div id="dificil" class="tab-content"></div>
+
+<script>
+/**
+ * Banco de preguntas y configuración
+ * Cada objeto tiene:
+ * - type: 'multiple', 'relation', 'caso', 'abierta'
+ * - question: enunciado
+ * - options: para multiple/relation
+ * - answer: para autocorrección (índices, pares o texto clave)
+ * - feedback: explicación larga y clara (correcta y por qué no las otras)
+ */
+const preguntas = [
+//// ------------ PRIMERA PESTAÑA (1-12) ------------
+  // Opción múltiple
+  {
+    type: 'multiple',
+    question: "¿Cuál de los siguientes elementos corresponde a los antecedentes en la evaluación clínica psicológica?",
+    options: [
+      "Selección de instrumentos",
+      "Historia médica previa",
+      "Interpretación de resultados",
+      "Propuesta de intervención"
+    ],
+    answer: 1,
+    feedback: "La historia médica previa forma parte de los antecedentes, ya que aporta información relevante sobre el contexto personal y familiar que puede influir en el estado psicológico actual. Las otras opciones corresponden a fases o elementos distintos en el proceso de evaluación."
+  },
+  {
+    type: 'multiple',
+    question: "Dentro del diagnóstico de comportamientos, ¿qué modelo enfatiza la identificación de antecedentes, conductas y consecuencias?",
+    options: [
+      "Modelo psicodinámico",
+      "Modelo humanista",
+      "Modelo conductual",
+      "Modelo existencial"
+    ],
+    answer: 2,
+    feedback: "El modelo conductual se centra en el análisis funcional, identificando antecedentes, conductas y consecuencias para explicar y modificar el comportamiento. Los otros modelos utilizan diferentes enfoques teóricos."
+  },
+  {
+    type: 'multiple',
+    question: "¿En qué etapa se realiza la calificación de los instrumentos de evaluación psicológica?",
+    options: [
+      "Durante la devolución del informe",
+      "Antes de la elaboración del diagnóstico",
+      "Al inicio de la intervención",
+      "En la planeación del tratamiento"
+    ],
+    answer: 1,
+    feedback: "La calificación de los instrumentos ocurre antes de la integración diagnóstica, para contar con datos objetivos y válidos que fundamenten el diagnóstico y la intervención."
+  },
+  // Relación de columnas
+  {
+    type: 'relation',
+    question: "Relaciona los conceptos con su definición:",
+    left: [
+      "Factores para la aplicación del diagnóstico",
+      "Informe de evaluación diagnóstica",
+      "Evaluación de la intervención"
+    ],
+    right: [
+      "Documento que integra la información obtenida durante el proceso de valoración.",
+      "Elementos que influyen en la validez y confiabilidad de los resultados diagnósticos.",
+      "Proceso de valorar la eficacia de las estrategias psicológicas aplicadas."
+    ],
+    answer: [1,0,2],
+    feedback: "Los factores para la aplicación del diagnóstico son elementos que determinan la validez y confiabilidad. El informe es el documento integrador, y la evaluación de la intervención se enfoca en valorar la eficacia."
+  },
+  {
+    type: 'relation',
+    question: "Relaciona cada instrumento con su propósito principal:",
+    left: [
+      "DSM-5",
+      "CIE-10",
+      "Pruebas psicométricas"
+    ],
+    right: [
+      "Clasificación internacional de enfermedades mentales.",
+      "Diagnóstico de trastornos mentales en contexto norteamericano.",
+      "Medición objetiva de características psicológicas."
+    ],
+    answer: [1,0,2],
+    feedback: "El DSM-5 se usa principalmente en América para diagnósticos mentales; la CIE-10 es internacional; las pruebas psicométricas miden variables psicológicas."
+  },
+  {
+    type: 'relation',
+    question: "Relaciona cada etapa con la actividad correspondiente:",
+    left: [
+      "Obtención de información psicológica",
+      "Aplicación de instrumentos",
+      "Calificación de instrumentos"
+    ],
+    right: [
+      "Administrar pruebas estandarizadas.",
+      "Recopilar datos relevantes del paciente.",
+      "Asignar puntaje a las respuestas obtenidas."
+    ],
+    answer: [1,0,2],
+    feedback: "La obtención de información implica recopilar datos; la aplicación, administrar pruebas; la calificación, asignar puntajes."
+  },
+  // Casos clínicos
+  {
+    type: 'caso',
+    question: "Un paciente acude a consulta presentando síntomas de ansiedad. Se le aplican dos pruebas psicológicas diferentes. ¿Cuál sería el siguiente paso lógico en el proceso de evaluación diagnóstica?",
+    options: [
+      "Devolver el informe",
+      "Interpretar los resultados de las pruebas",
+      "Realizar la intervención",
+      "Aplicar el DSM-5"
+    ],
+    answer: 1,
+    feedback: "Interpretar los resultados permite integrar la información para un diagnóstico certero antes de cualquier intervención o devolución."
+  },
+  {
+    type: 'caso',
+    question: "En la revisión de un caso, el docente observa que el alumno no consideró los antecedentes familiares en la historia clínica. ¿Qué impacto puede tener esto en el diagnóstico?",
+    options: [
+      "Ninguno, porque no son relevantes",
+      "Puede limitar la comprensión integral del caso",
+      "Mejora la objetividad",
+      "Facilita la intervención"
+    ],
+    answer: 1,
+    feedback: "Omitir antecedentes familiares puede limitar la comprensión integral del caso, ya que el contexto familiar influye en el funcionamiento psicológico."
+  },
+  {
+    type: 'caso',
+    question: "Durante la evaluación, un psicólogo utiliza el CIE-10 para clasificar los síntomas reportados por el paciente. ¿A qué área y subárea del EGEL-PLUS PSI corresponde esta acción?",
+    options: [
+      "Área 2, Subárea 2.2",
+      "Área 1, Subárea 1.2",
+      "Área 1, Subárea 1.3",
+      "Área 2, Subárea 2.1"
+    ],
+    answer: 1,
+    feedback: "El uso de CIE-10 corresponde al área 1, subárea 1.2 (Uso de instrumentos y herramientas psicológicas para el diagnóstico)."
+  },
+  // Preguntas abiertas
+  {
+    type: 'abierta',
+    question: "Explica la importancia de considerar los antecedentes personales y familiares en la evaluación clínica psicológica.",
+    answer: "Permiten comprender el contexto biopsicosocial del paciente, identificar factores de riesgo y protección, y fundamentar el diagnóstico e intervención. Ignorarlos puede llevar a errores diagnósticos o intervenciones poco efectivas.",
+    feedback: "Una respuesta completa menciona el papel de los antecedentes en la comprensión integral del caso, la identificación de factores etiológicos y pronósticos, y su relevancia para la planificación de la intervención."
+  },
+  {
+    type: 'abierta',
+    question: "¿Cómo se integra la información obtenida mediante instrumentos de evaluación en la elaboración del informe diagnóstico?",
+    answer: "Se triangulan los datos obtenidos de entrevistas, pruebas y observaciones para construir un diagnóstico fundamentado, identificando patrones, concordancias y discrepancias, y contextualizando los resultados con la situación del paciente.",
+    feedback: "La integración implica analizar los resultados de los diversos instrumentos, compararlos y contextualizarlos, evitando depender de una única fuente y asegurando una visión holística y fundamentada."
+  },
+  {
+    type: 'abierta',
+    question: "Describe el proceso para evaluar la eficacia de una intervención psicológica.",
+    answer: "Implica definir criterios de éxito, medir los cambios mediante instrumentos válidos, comparar resultados pre y post intervención, analizar los componentes efectivos y considerar la satisfacción del paciente y el impacto social.",
+    feedback: "Se espera que la respuesta incluya la definición de indicadores, la recolección de datos antes y después, el análisis de resultados y la valoración de la relevancia práctica y social."
+  },
+
+//// ------------ SEGUNDA PESTAÑA (13-24, avanzada) ------------
+  // Opción múltiple avanzada
+  {
+    type: 'multiple',
+    question: "Al realizar una evaluación clínica, ¿cuál es el principal riesgo de no considerar exhaustivamente los antecedentes familiares y personales?",
+    options: [
+      "Redundancia de información",
+      "Sesgo en la interpretación de resultados",
+      "Dificultad para aplicar pruebas psicométricas",
+      "Retraso en la entrega del informe"
+    ],
+    answer: 1,
+    feedback: "No considerar antecedentes puede generar sesgos en la interpretación, ya que se pierde información relevante para entender la problemática del paciente. Las otras opciones no son consecuencias directas de este error."
+  },
+  {
+    type: 'multiple',
+    question: "¿Qué característica distingue un análisis funcional conductual exhaustivo respecto a uno superficial?",
+    options: [
+      "Recopila solo antecedentes inmediatos",
+      "Incluye múltiples contextos y mantiene hipótesis dinámicas",
+      "Limita la intervención a técnicas estándar",
+      "Se apoya exclusivamente en autoinformes"
+    ],
+    answer: 1,
+    feedback: "Un análisis funcional exhaustivo considera distintos contextos y ajusta hipótesis según la evolución del caso, permitiendo intervenciones más precisas y personalizadas."
+  },
+  {
+    type: 'multiple',
+    question: "Si tras aplicar varios instrumentos psicométricos los resultados son inconsistentes, el psicólogo debe:",
+    options: [
+      "Elegir el instrumento con mayor puntaje",
+      "Realizar una nueva entrevista clínica y reevaluar la interpretación",
+      "Ignorar los resultados menos favorables",
+      "Entregar el informe sin modificaciones"
+    ],
+    answer: 1,
+    feedback: "La inconsistencia requiere profundizar mediante nuevas entrevistas y reevaluar la información para evitar errores diagnósticos. Seleccionar datos arbitrariamente o no hacer ajustes sería incorrecto."
+  },
+  // Relación de columnas avanzada
+  {
+    type: 'relation',
+    question: "Relaciona cada modelo con su utilidad principal en el diagnóstico psicológico:",
+    left: [
+      "Modelo conductual",
+      "Modelo cognitivo",
+      "Modelo sistémico"
+    ],
+    right: [
+      "Explica patrones de interacción y comunicación en contextos familiares o grupales",
+      "Analiza la relación entre pensamientos, emociones y conductas",
+      "Centra el análisis en antecedentes, conductas y consecuencias observables"
+    ],
+    answer: [2,1,0],
+    feedback: "El modelo conductual se centra en la observación; el cognitivo, en procesos mentales; el sistémico, en la interacción grupal o familiar."
+  },
+  {
+    type: 'relation',
+    question: "Relaciona el tipo de información con la técnica recomendada para su obtención:",
+    left: [
+      "Factores de riesgo psicosocial",
+      "Precisión en la clasificación diagnóstica",
+      "Variabilidad de síntomas en el tiempo"
+    ],
+    right: [
+      "Aplicación de entrevistas estructuradas y longitudinales",
+      "Uso de escalas estandarizadas y criterios DSM-5/CIE-10",
+      "Aplicación de cuestionarios de tamizaje y exploración contextual"
+    ],
+    answer: [2,1,0],
+    feedback: "Los factores de riesgo suelen explorarse mediante tamizajes y contexto; precisión diagnóstica requiere criterios estandarizados; la variabilidad temporal se analiza con entrevistas longitudinales."
+  },
+  {
+    type: 'relation',
+    question: "Relaciona cada fase del proceso de evaluación diagnóstica con la decisión crítica que implica:",
+    left: [
+      "Selección de instrumentos",
+      "Interpretación de resultados",
+      "Propuestas de intervención"
+    ],
+    right: [
+      "Determinar la validez ecológica de las pruebas aplicadas",
+      "Evaluar la congruencia entre los hallazgos obtenidos y el motivo de consulta",
+      "Definir objetivos específicos y recursos necesarios para el abordaje"
+    ],
+    answer: [0,1,2],
+    feedback: "La selección requiere valorar validez ecológica; la interpretación, congruencia con el motivo de consulta; la propuesta de intervención, definir objetivos y recursos."
+  },
+  // Casos clínicos avanzados
+  {
+    type: 'caso',
+    question: "Un paciente adolescente refiere bajo rendimiento escolar. Se aplican entrevistas familiares, pruebas de inteligencia y cuestionarios de clima escolar. Los resultados muestran discrepancias. ¿Qué debe priorizar el psicólogo para integrar el diagnóstico?",
+    options: [
+      "El resultado de la prueba de inteligencia",
+      "El análisis de la interacción de factores personales, familiares y escolares",
+      "La opinión de los profesores",
+      "El motivo de consulta original"
+    ],
+    answer: 1,
+    feedback: "Integrar los distintos factores y su interacción permite un diagnóstico más completo y menos reduccionista."
+  },
+  {
+    type: 'caso',
+    question: "Una evaluación clínica revela síntomas depresivos, antecedentes de duelo reciente y dificultades laborales. El análisis funcional indica refuerzos negativos en conductas de aislamiento. ¿Qué estrategia favorece la precisión del diagnóstico?",
+    options: [
+      "Aplicar exclusivamente pruebas proyectivas",
+      "Considerar la interacción entre antecedentes, síntomas y contexto mediante modelos mixtos",
+      "Diagnosticar solo con base en el DSM-5",
+      "Omitir el análisis funcional"
+    ],
+    answer: 1,
+    feedback: "Un enfoque integrador que tome en cuenta antecedentes, síntomas y contexto permite mayor precisión diagnóstica y mejores intervenciones."
+  },
+  {
+    type: 'caso',
+    question: "Durante la evaluación de una intervención psicológica, los resultados a corto plazo son positivos, pero no se observan cambios a los seis meses. ¿Qué acción debe tomar el profesional?",
+    options: [
+      "Concluir que la intervención fue exitosa",
+      "Replantear la intervención considerando factores de mantenimiento y seguimiento",
+      "Ignorar los resultados a largo plazo",
+      "Cambiar de modelo terapéutico sin justificación"
+    ],
+    answer: 1,
+    feedback: "Es necesario replantear o fortalecer la intervención, considerando estrategias de mantenimiento y seguimiento para lograr cambios sostenibles."
+  },
+  // Preguntas abiertas avanzadas
+  {
+    type: 'abierta',
+    question: "Analiza las ventajas y limitaciones de utilizar exclusivamente criterios del DSM-5 y CIE-10 para la clasificación diagnóstica en la evaluación clínica.",
+    answer: "Ventajas: estandarización, comparación internacional, guía clara para diagnóstico. Limitaciones: pueden no contemplar el contexto sociocultural, riesgo de sobrediagnóstico, reduccionismo y posible falta de personalización.",
+    feedback: "Una respuesta robusta debe mencionar la utilidad de la estandarización y la facilidad de comunicación, así como los riesgos de sobrediagnóstico, la falta de énfasis en el contexto y la posible rigidez."
+  },
+  {
+    type: 'abierta',
+    question: "Explica cómo la integración de diferentes fuentes de información (entrevista, pruebas psicométricas, observación) mejora la validez y confiabilidad del diagnóstico psicológico.",
+    answer: "La triangulación de fuentes permite corroborar datos, detectar inconsistencias, reducir sesgos de cada método individual y obtener una visión más completa y precisa del caso.",
+    feedback: "La triangulación fortalece la validez y confiabilidad, ya que cada fuente aporta perspectivas distintas y complementarias; esto disminuye errores y aumenta la precisión diagnóstica."
+  },
+  {
+    type: 'abierta',
+    question: "Describe los pasos y consideraciones éticas para la evaluación del impacto social de un protocolo de intervención psicológica.",
+    answer: "Implica definir indicadores de impacto, obtener consentimiento informado, resguardar la confidencialidad, analizar los resultados en términos de beneficio social y reportar los hallazgos respetando la integridad de los participantes.",
+    feedback: "La evaluación ética del impacto social requiere indicadores claros, transparencia, consentimiento, confidencialidad y honestidad en la presentación de resultados, priorizando siempre el bienestar de los participantes."
+  }
+];
+
+// Renderizado dinámico
+function renderTab(tabId, startIndex, endIndex) {
+  const container = document.getElementById(tabId);
+  container.innerHTML = '';
+  for (let i = startIndex; i < endIndex; i++) {
+    const q = preguntas[i];
+    let html = `<div class="question-block" id="q${i}">
+      <div class="question-title"><span style="color:var(--accent)">Pregunta ${i+1}:</span> ${q.question}</div>
+    `;
+
+    // Opción múltiple o caso clínico
+    if(q.type === 'multiple' || q.type === 'caso'){
+      html += '<div class="options">';
+      q.options.forEach((opt, idx) => {
+        html += `<label class="option-label">
+          <input type="radio" name="q${i}" value="${idx}">
+          ${opt}
+        </label>`;
+      });
+      html += '</div>';
+      html += `<button class="check-btn" onclick="checkMultiple(${i})">Comprobar</button>`;
+    }
+
+    // Relación de columnas
+    else if(q.type === 'relation'){
+      html += `<table class="relation-table"><tr><th>Izquierda</th><th>Relaciona</th></tr>`;
+      q.left.forEach((leftItem, idx) => {
+        html += `<tr><td>${leftItem}</td>
+        <td>
+          <select class="relation-select" id="rel${i}_${idx}">
+            <option value="">Selecciona...</option>`;
+        q.right.forEach((rightItem, jdx) => {
+          html += `<option value="${jdx}">${rightItem}</option>`;
+        });
+        html += `</select>
+        </td></tr>`;
+      });
+      html += `</table>
+      <button class="check-btn" onclick="checkRelation(${i})">Comprobar</button>`;
+    }
+
+    // Pregunta abierta
+    else if(q.type === 'abierta'){
+      html += `<textarea class="open-response" id="open${i}" placeholder="Escribe tu respuesta..."></textarea>
+      <button class="check-btn" onclick="checkAbierta(${i})">Comprobar</button>`;
+    }
+
+    html += `<div class="feedback" id="f${i}"></div></div>`;
+    container.innerHTML += html;
+  }
+}
+
+// --- Lógica de comprobación y feedback ---
+
+function checkMultiple(idx){
+  const q = preguntas[idx];
+  const radios = document.querySelectorAll(`#q${idx} input[type='radio']`);
+  let selected = -1;
+  radios.forEach((r, i) => {
+    if(r.checked) selected = parseInt(r.value);
+  });
+  const feedback = document.getElementById(`f${idx}`);
+  radios.forEach((r, i) => {
+    r.parentElement.classList.remove('selected');
+    if(i === selected) r.parentElement.classList.add('selected');
+  });
+
+  if(selected === -1){
+    feedback.innerHTML = `<span class="title">Selecciona una opción antes de comprobar.</span>`;
+    feedback.classList.add('error');
+    feedback.style.display = 'block';
+    return;
+  }
+  if(selected === q.answer){
+    feedback.innerHTML = `<span class="title">¡Correcto!</span> ${q.feedback}`;
+    feedback.classList.remove('error');
+    feedback.style.display = 'block';
+  } else {
+    feedback.innerHTML = `<span class="title">Incorrecto.</span> ${q.feedback}`;
+    feedback.classList.add('error');
+    feedback.style.display = 'block';
+  }
+}
+
+function checkRelation(idx){
+  const q = preguntas[idx];
+  let correct = true;
+  let missing = false;
+  let userAnswers = [];
+  for(let i=0;i<q.left.length;i++){
+    const sel = document.getElementById(`rel${idx}_${i}`);
+    if(sel.value === ''){
+      missing = true;
+      break;
+    }
+    userAnswers.push(parseInt(sel.value));
+    if(parseInt(sel.value) !== q.answer[i]) correct = false;
+  }
+  const feedback = document.getElementById(`f${idx}`);
+  if(missing){
+    feedback.innerHTML = `<span class="title">Responde todas las filas antes de comprobar.</span>`;
+    feedback.classList.add('error');
+    feedback.style.display = 'block';
+    return;
+  }
+  if(correct){
+    feedback.innerHTML = `<span class="title">¡Correcto!</span> ${q.feedback}`;
+    feedback.classList.remove('error');
+    feedback.style.display = 'block';
+  } else {
+    feedback.innerHTML = `<span class="title">Incorrecto.</span> ${q.feedback}`;
+    feedback.classList.add('error');
+    feedback.style.display = 'block';
+  }
+}
+
+function checkAbierta(idx){
+  const q = preguntas[idx];
+  const val = (document.getElementById(`open${idx}`).value || '').trim();
+  const feedback = document.getElementById(`f${idx}`);
+  if(val.length < 15){
+    feedback.innerHTML = `<span class="title">Responde con mayor detalle.</span>`;
+    feedback.classList.add('error');
+    feedback.style.display = 'block';
+    return;
+  }
+  // Búsqueda simple de palabras clave (puedes mejorar con IA/NLP)
+  const keywords = q.answer.toLowerCase().split(/[ ,;.]+/).filter(w=>w.length>5);
+  let matches = 0;
+  keywords.forEach(kw=>{
+    if(val.toLowerCase().includes(kw)) matches++;
+  });
+  const ratio = matches / (keywords.length || 1);
+  if(ratio > 0.4){
+    feedback.innerHTML = `<span class="title">¡Bien!</span> ${q.feedback}`;
+    feedback.classList.remove('error');
+    feedback.style.display = 'block';
+  } else {
+    feedback.innerHTML = `<span class="title">Respuesta incompleta.</span> ${q.feedback}`;
+    feedback.classList.add('error');
+    feedback.style.display = 'block';
+  }
+}
+
+// --- Tabs y render inicial ---
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(tc=>tc.classList.remove('active'));
+    this.classList.add('active');
+    document.getElementById(this.dataset.tab).classList.add('active');
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+});
+
+// Render inicial
+renderTab('facil',0,12);
+renderTab('dificil',12,24);
+</script>
+</body>
+</html>
