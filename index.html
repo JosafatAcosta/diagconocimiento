@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador · Integración del Diagnóstico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:ital,wght@0,400;0,600;0,700;1,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#141614; --panel:#1B2321; --panel-2:#212B28;
+    --tan:#C9A24B; --tan-soft:#E4CE8E;
+    --paper:#F4EEDD; --paper-line:#E3D8B8;
+    --teal:#123534; --teal-2:#0D2726;
+    --ok:#3C7A5A; --ok-bg:#1E3A2C;
+    --bad:#B5453B; --bad-bg:#3A2320;
+    --muted:#9FB0AA; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 800px at 15% -10%, #1a3634 0%, transparent 60%),
+      radial-gradient(1000px 700px at 110% 10%, #1a2e2a 0%, transparent 55%),
+      var(--ink);
+    color:var(--paper);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:820px;margin:0 auto;padding:28px 18px 60px;}
+  .masthead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;border-bottom:2px solid var(--tan);padding-bottom:14px;margin-bottom:26px;flex-wrap:wrap;}
+  .masthead h1{font-family:'Zilla Slab', serif;font-weight:700;font-size:1.7rem;margin:0 0 4px;letter-spacing:.2px;}
+  .masthead .kicker{font-family:'IBM Plex Mono', monospace;text-transform:uppercase;letter-spacing:2px;font-size:.68rem;color:var(--tan-soft);margin-bottom:6px;}
+  .masthead .sub{color:var(--muted);font-size:.88rem;max-width:520px;}
+  .file-tag{font-family:'IBM Plex Mono', monospace;font-size:.72rem;color:var(--teal-2);background:var(--tan-soft);padding:5px 10px;border-radius:3px;white-space:nowrap;transform:rotate(-1.5deg);box-shadow:0 2px 0 rgba(0,0,0,.25);}
+  .card{background:var(--panel);border:1px solid #2C3835;border-radius:var(--radius);padding:22px 22px 20px;margin-bottom:18px;}
+  .setup h2{font-family:'Zilla Slab', serif;font-size:1.25rem;margin-top:0;}
+  .field{margin-bottom:18px;}
+  .field label{display:block;font-family:'IBM Plex Mono', monospace;font-size:.72rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--tan-soft);margin-bottom:8px;}
+  .pill-group{display:flex;gap:8px;flex-wrap:wrap;}
+  .pill-btn{background:var(--panel-2);border:1px solid #354541;color:var(--paper);padding:9px 16px;border-radius:20px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:.86rem;transition:.15s;}
+  .pill-btn:hover{border-color:var(--tan);}
+  .pill-btn.active{background:var(--tan);border-color:var(--tan);color:#1D1706;font-weight:600;}
+  .checklist{display:flex;flex-direction:column;gap:10px;}
+  .check-row{display:flex;align-items:center;gap:12px;background:var(--panel-2);border:1px solid #354541;border-radius:8px;padding:12px 14px;cursor:pointer;}
+  .check-row input{accent-color:var(--tan);width:17px;height:17px;flex-shrink:0;}
+  .check-row .cname{font-weight:600;font-size:.92rem;}
+  .check-row .ccount{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--muted);}
+  .start-btn{display:block;width:100%;margin-top:6px;background:var(--tan);color:#1D1706;border:none;padding:15px;font-size:1rem;font-weight:700;border-radius:8px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;letter-spacing:.3px;transition:.15s;}
+  .start-btn:hover{background:var(--tan-soft);}
+  .start-btn:disabled{opacity:.4;cursor:not-allowed;}
+  .tabs{display:flex;gap:4px;margin-bottom:0;overflow-x:auto;}
+  .tab{font-family:'IBM Plex Mono', monospace;font-size:.68rem;text-transform:uppercase;letter-spacing:1px;padding:9px 14px 8px;border-radius:8px 8px 0 0;background:var(--panel-2);color:var(--muted);border:1px solid #2C3835;border-bottom:none;white-space:nowrap;}
+  .tab.active{background:var(--panel);color:var(--tan-soft);border-color:var(--tan);}
+  .progress-row{display:flex;justify-content:space-between;align-items:center;margin:14px 0 10px;font-family:'IBM Plex Mono', monospace;font-size:.76rem;color:var(--muted);}
+  .score-chip{background:var(--panel-2);border:1px solid #354541;padding:4px 11px;border-radius:20px;color:var(--tan-soft);}
+  .bar-track{height:6px;background:#2C3835;border-radius:4px;overflow:hidden;margin-bottom:20px;}
+  .bar-fill{height:100%;background:var(--tan);transition:width .3s ease;}
+  .qcard{background:var(--paper);color:#2A2418;border-radius:0 8px 8px 8px;padding:24px 24px 20px;position:relative;border:1px solid var(--paper-line);box-shadow:0 10px 30px rgba(0,0,0,.25);}
+  .qnum{font-family:'IBM Plex Mono', monospace;font-size:.72rem;color:#7A6A3E;letter-spacing:1px;margin-bottom:10px;}
+  .qprompt{font-family:'Zilla Slab', serif;font-size:1.15rem;line-height:1.5;margin:0 0 16px;font-weight:600;}
+  .qprompt em.blank{display:inline-block;min-width:90px;border-bottom:2px solid #8A7A44;font-style:normal;}
+  .casebox{background:#E9DFC0;border-left:4px solid #8A7A44;border-radius:4px;padding:12px 16px;margin-bottom:18px;font-size:.9rem;line-height:1.55;}
+  .casebox .case-tag{font-family:'IBM Plex Mono', monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;color:#7A6A3E;display:block;margin-bottom:6px;font-weight:600;}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+  @media (max-width:520px){ .cols{grid-template-columns:1fr;} }
+  .col-box{background:#EDE4C8;border:1px solid var(--paper-line);border-radius:6px;padding:12px 14px;}
+  .col-box .col-title{font-family:'IBM Plex Mono', monospace;font-size:.66rem;text-transform:uppercase;letter-spacing:1px;color:#7A6A3E;margin-bottom:8px;}
+  .col-box ol,.col-box ul{margin:0;padding-left:18px;font-size:.87rem;line-height:1.55;}
+  .steps-box{background:#EDE4C8;border:1px solid var(--paper-line);border-radius:6px;padding:12px 14px;margin-bottom:18px;}
+  .steps-box .col-title{font-family:'IBM Plex Mono', monospace;font-size:.66rem;text-transform:uppercase;letter-spacing:1px;color:#7A6A3E;margin-bottom:8px;}
+  .steps-box ul{margin:0;padding-left:18px;font-size:.87rem;line-height:1.6;}
+  .options{display:flex;flex-direction:column;gap:10px;}
+  .opt{display:flex;gap:12px;align-items:flex-start;background:#FBF8ED;border:1.5px solid #D9CBA0;border-radius:7px;padding:12px 14px;cursor:pointer;font-size:.92rem;line-height:1.45;transition:.12s;}
+  .opt:hover{border-color:#8A7A44;}
+  .opt .letter{font-family:'IBM Plex Mono', monospace;font-weight:700;color:#8A7A44;flex-shrink:0;}
+  .opt.selected{border-color:#8A7A44;background:#F3EBD1;}
+  .opt.locked{cursor:default;}
+  .opt.correct{background:var(--ok-bg);border-color:var(--ok);color:#EAF5EE;}
+  .opt.correct .letter{color:#8FD1A8;}
+  .opt.incorrect{background:var(--bad-bg);border-color:var(--bad);color:#FBEAE8;}
+  .opt.incorrect .letter{color:#E79087;}
+  .opt.dim{opacity:.55;}
+  .check-btn{margin-top:18px;background:var(--teal);color:var(--tan-soft);border:1px solid var(--tan);padding:12px 20px;border-radius:7px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:.92rem;}
+  .check-btn:disabled{opacity:.35;cursor:not-allowed;}
+  .next-btn{margin-top:18px;background:var(--tan);color:#1D1706;border:none;padding:12px 20px;border-radius:7px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:.92rem;}
+  .feedback{margin-top:16px;padding:14px 16px;border-radius:7px;font-size:.88rem;line-height:1.55;position:relative;}
+  .feedback.ok{background:var(--ok-bg);color:#DCEFE2;border:1px solid var(--ok);}
+  .feedback.bad{background:var(--bad-bg);color:#F6DEDA;border:1px solid var(--bad);}
+  .feedback strong{display:block;margin-bottom:5px;font-family:'Zilla Slab',serif;font-size:1rem;}
+  .stamp{position:absolute;top:-14px;right:14px;font-family:'IBM Plex Mono', monospace;font-weight:700;font-size:.9rem;letter-spacing:2px;padding:8px 14px;border:3px solid;border-radius:6px;transform:rotate(-7deg);background:rgba(20,22,20,.85);animation:stampIn .28s ease-out;}
+  .stamp.ok{color:#7FD79B;border-color:#7FD79B;}
+  .stamp.bad{color:#E98A80;border-color:#E98A80;}
+  @keyframes stampIn{0%{transform:rotate(-7deg) scale(1.8);opacity:0;}60%{opacity:1;}100%{transform:rotate(-7deg) scale(1);opacity:1;}}
+  .results-hero{display:flex;gap:24px;align-items:center;flex-wrap:wrap;}
+  .score-ring{width:140px;height:140px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:conic-gradient(var(--tan) calc(var(--pct)*1%), #2C3835 0);position:relative;}
+  .score-ring::before{content:"";position:absolute;width:110px;height:110px;border-radius:50%;background:var(--panel);}
+  .score-ring .num{position:relative;font-family:'Zilla Slab',serif;font-size:2.1rem;font-weight:700;}
+  .score-ring .lbl{position:relative;font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:1px;}
+  .results-hero h2{font-family:'Zilla Slab',serif;font-size:1.4rem;margin:0 0 6px;}
+  .results-hero p{color:var(--muted);margin:0;max-width:360px;font-size:.9rem;}
+  .breakdown{margin-top:22px;}
+  .breakdown h3{font-family:'IBM Plex Mono',monospace;font-size:.72rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--tan-soft);margin-bottom:10px;}
+  .bd-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:.85rem;}
+  .bd-row .bd-name{width:170px;flex-shrink:0;color:var(--paper);}
+  .bd-track{flex:1;height:8px;background:#2C3835;border-radius:4px;overflow:hidden;}
+  .bd-fill{height:100%;background:var(--tan);}
+  .bd-frac{font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:var(--muted);width:44px;text-align:right;}
+  .review-item{border-bottom:1px solid #2C3835;padding:14px 0;}
+  .review-item:last-child{border-bottom:none;}
+  .review-item .rq{font-family:'Zilla Slab',serif;font-weight:600;margin-bottom:6px;font-size:.95rem;}
+  .review-item .ra{font-size:.84rem;margin:3px 0;}
+  .review-item .ra.good{color:#8FD1A8;}
+  .review-item .ra.bad{color:#E79087;}
+  .review-item .rexp{font-size:.82rem;color:var(--muted);margin-top:6px;line-height:1.5;}
+  .tag-badge{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:1px;color:var(--teal-2);background:var(--tan-soft);padding:2px 7px;border-radius:3px;margin-bottom:8px;}
+  .btn-row{display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;}
+  .btn-row button{flex:1;min-width:160px;padding:13px;border-radius:8px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:.9rem;}
+  .btn-primary{background:var(--tan);color:#1D1706;border:none;}
+  .btn-secondary{background:transparent;color:var(--tan-soft);border:1px solid var(--tan);}
+  .footer-credit{text-align:center;margin-top:34px;font-family:'IBM Plex Mono', monospace;font-size:.72rem;color:var(--muted);letter-spacing:.5px;}
+  .footer-credit b{color:var(--tan-soft);}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="masthead">
+    <div>
+      <div class="kicker">Simulador de práctica · No es el examen real</div>
+      <h1>Integración del Diagnóstico</h1>
+      <div class="sub">Reactivos originales basados en casos clínicos únicos para practicar el nivel de dificultad, los contenidos y el formato de evaluación de la materia.</div>
+    </div>
+    <div class="file-tag">EXP. PRÁCTICA #26</div>
+  </div>
+
+  <div id="setup" class="card setup">
+    <h2>Configura tu simulacro</h2>
+    <p style="color:var(--muted);font-size:.87rem;margin-top:-8px;">
+      Todos los reactivos están construidos sobre <strong>casos clínicos originales</strong> que evalúan
+      los mismos temas (integridad del tratamiento, pertinencia clínica, método clínico, DSM-5-TR, tipos de diagnóstico,
+      perfiles y proceso de evaluación) con el mismo formato y nivel de exigencia del examen oficial.
+    </p>
+    <div class="field">
+      <label>Número de reactivos</label>
+      <div class="pill-group" id="countPills"></div>
+    </div>
+    <div class="field">
+      <label>Tipos de reactivo a incluir</label>
+      <div class="checklist" id="catChecklist"></div>
+    </div>
+    <button class="start-btn" id="startBtn">Comenzar simulacro</button>
+  </div>
+
+  <div id="exam" class="hidden">
+    <div class="tabs" id="tabsRow"></div>
+    <div class="progress-row">
+      <span id="progressLabel">Reactivo 1 de 20</span>
+      <span class="score-chip" id="scoreChip">Aciertos: 0/0</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" id="barFill" style="width:0%"></div></div>
+    <div class="qcard" id="qcard"></div>
+  </div>
+
+  <div id="results" class="hidden">
+    <div class="card">
+      <div class="results-hero">
+        <div class="score-ring" id="scoreRing" style="--pct:0">
+          <div class="num" id="scoreNum">0.0</div>
+          <div class="lbl">DE 10</div>
+        </div>
+        <div>
+          <h2 id="resultTitle">Resultado del simulacro</h2>
+          <p id="resultMsg">—</p>
+        </div>
+      </div>
+      <div class="breakdown">
+        <h3>Desempeño por tipo de reactivo</h3>
+        <div id="breakdownList"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" id="retryBtn">Nuevo intento (reactivos distintos)</button>
+        <button class="btn-secondary" id="reviewBtn">Ver retroalimentación completa</button>
+      </div>
+    </div>
+    <div class="card hidden" id="reviewCard">
+      <h2 style="font-family:'Zilla Slab',serif;margin-top:0;">Retroalimentación detallada</h2>
+      <div id="reviewList"></div>
+    </div>
+  </div>
+
+  <div class="footer-credit">
+    Herramienta de práctica desarrollada por <b>Psic. Josafat Acosta García</b> · Uso educativo — no sustituye el examen oficial
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   BANCO DE REACTIVOS — Cada ítem está construido sobre un CASO CLÍNICO
+   ORIGINAL con personajes, edades y contextos específicos. Ningún ítem
+   repite la estructura o situación de otro.
+   ========================================================================= */
+
+const BANK = [
+
+/* ================= CASOS CLÍNICOS (opción múltiple sobre caso) ================= */
+
+{cat:"caso",
+ prompt:"Marisol (34 años) acude a TCC por ansiedad generalizada. En la sesión 8 revela que su pareja la agrede físicamente. Su terapeuta detiene el protocolo para activar una red de apoyo y garantizar seguridad; tres sesiones después retoma la reestructuración cognitiva. Según los criterios de integridad de Kazdin, esta decisión constituye:",
+ options:[
+  "Una ruptura de Adherencia que invalida el tratamiento",
+  "Una aplicación competente que protege a la paciente sin abandonar el objetivo terapéutico",
+  "Una falla de Diferenciación frente a otros protocolos"
+ ], correct:1,
+ exp:"Atender una situación de riesgo y retomar el protocolo después es una adaptación clínicamente juiciosa: protege a Marisol y preserva la dirección terapéutica global."},
+
+{cat:"caso",
+ prompt:"Don Herminio (67 años) participa en un grupo de activación conductual para depresión en un centro geriátrico. Tiene hipoacusia y no sigue bien las discusiones. Su terapeuta le entrega materiales impresos en letra grande y le permite participar individualmente cuando se requiere, conservando los componentes del protocolo. Esta actuación refleja:",
+ options:[
+  "Baja Adherencia por cambiar el formato grupal",
+  "Alta Competencia clínica ejercida dentro de la Adherencia",
+  "Baja Diferenciación del tratamiento"
+ ], correct:1,
+ exp:"Ajustar el formato de entrega (materiales accesibles, modalidad individual) sin tocar los componentes activos del protocolo es Competencia dentro de la Adherencia."},
+
+{cat:"caso",
+ prompt:"Un equipo aplica Terapia de Aceptación y Compromiso para dolor crónico en 90 pacientes de una clínica del IMSS. Al finalizar, las escalas de catastrofización bajan significativamente (p < .01), pero el 65% sigue sin poder trabajar ni realizar labores domésticas. Este hallazgo ilustra:",
+ options:[
+  "Significación estadística sin pertinencia clínica suficiente",
+  "Baja Adherencia al protocolo ACT",
+  "Falla de Diferenciación entre condiciones"
+ ], correct:0,
+ exp:"Bajar puntajes en escalas no equivale a recuperar el funcionamiento cotidiano. La pertinencia clínica exige impacto real en la vida de los pacientes."},
+
+{cat:"caso",
+ prompt:"La Dra. Ramírez quiere saber si la 'defusión cognitiva' aporta beneficios al mindfulness para ansiedad. Compara tres brazos: mindfulness solo; mindfulness + defusión; mindfulness + defusión + trabajo de valores. Este diseño se llama:",
+ options:[
+  "Diseño de desmantelamiento",
+  "Diseño constructivo o aditivo",
+  "Diseño de mediación"
+ ], correct:1,
+ exp:"Se parte de un componente base y se añaden elementos progresivamente para medir su aporte incremental: diseño constructivo/aditivo."},
+
+{cat:"caso",
+ prompt:"Santiago (9 años) es evaluado por dificultades escolares. La psicóloga entrevista a los padres sobre hitos del desarrollo, aplica escalas de inteligencia y atención, observa su conducta en consulta y en el aula, y formula TDAH. El procedimiento seguido corresponde a:",
+ options:[
+  "El método clínico aplicado al diagnóstico",
+  "Un perfil sociodemográfico",
+  "Un análisis funcional de rabietas"
+ ], correct:0,
+ exp:"El método clínico integra múltiples fuentes de información (historia, entrevista, pruebas, observación) para construir un juicio diagnóstico fundamentado."},
+
+{cat:"caso",
+ prompt:"En un ensayo de TCC vs. terapia psicodinámica para fobia social, los monitores detectan que los terapeutas TCC hacen interpretaciones de conflictos inconscientes y los psicodinámicos aplican exposición en vivo. Este problema compromete:",
+ options:[
+  "La Adherencia de cada grupo a su manual",
+  "La Diferenciación entre las condiciones comparadas",
+  "La pertinencia clínica de los resultados"
+ ], correct:1,
+ exp:"Cuando dos condiciones intercambian técnicas se pierde la frontera entre ellas y no puede atribuirse el efecto a un enfoque específico: falla de Diferenciación."},
+
+{cat:"caso",
+ prompt:"Lucía (28 años) completa tratamiento para TEPT tras un accidente vial. Su puntuación en la escala de gravedad baja de 38 a 18; además vuelve a conducir, regresa al trabajo y retoma su vida social. Según Jacobson y Truax, este caso alcanza:",
+ options:[
+  "Solo significación estadística",
+  "Pertinencia o significación clínica",
+  "Solo adherencia terapéutica"
+ ], correct:1,
+ exp:"Hay cambio confiable en la medición y desplazamiento hacia el funcionamiento normal: los dos criterios de Jacobson y Truax para la pertinencia clínica."},
+
+{cat:"caso",
+ prompt:"El Dr. Mendoza aplica DBT a un grupo de mujeres indígenas con rasgos límite. Sigue el manual paso a paso, pero ignora las expresiones emocionales de las pacientes y no adapta el lenguaje a su contexto cultural. Según Kazdin, esto refleja:",
+ options:[
+  "Alta Adherencia, baja Competencia",
+  "Baja Adherencia, alta Competencia",
+  "Alta Diferenciación, baja Adherencia"
+ ], correct:0,
+ exp:"Seguir el manual rígidamente es Adherencia; hacerlo sin sensibilidad clínica ni adaptación cultural es una falla de Competencia. Ambas dimensiones son independientes."},
+
+{cat:"caso",
+ prompt:"Fernanda (15 años) es evaluada por conductas disruptivas en la preparatoria. La psicóloga entrevista a Fernanda, aplica escalas a padres y maestros y observa en el aula, pero no aplica pruebas de inteligencia ni descarta trastornos del aprendizaje. Está omitiendo principalmente:",
+ options:[
+  "La recogida de síntomas por entrevista",
+  "La recogida de signos mediante instrumentos objetivos",
+  "La formulación de hipótesis"
+ ], correct:1,
+ exp:"Los síntomas son reportes subjetivos; los signos son datos objetivos obtenidos con instrumentos estandarizados. Sin pruebas se pierden signos clave."},
+
+{cat:"caso",
+ prompt:"Un equipo quiere saber si el 'registro de pensamientos' es esencial en un protocolo de TCC para depresión en adultos mayores. Comparan el protocolo completo contra una versión sin ese componente. Este diseño se llama:",
+ options:[
+  "Diseño constructivo o aditivo",
+  "Diseño de desmantelamiento",
+  "Diseño factorial"
+ ], correct:1,
+ exp:"Partir del tratamiento completo y restarle un componente para evaluar si es esencial es el sello del diseño de desmantelamiento."},
+
+{cat:"caso",
+ prompt:"Roberto (42 años) es diagnosticado con Trastorno Depresivo Mayor. Su psiquiatra quiere documentar el grado de discapacidad usando el instrumento recomendado por el DSM-5-TR en sustitución de la antigua EEAG. Debe utilizar:",
+ options:[
+  "El BDI-II de Beck",
+  "El WHODAS 2.0 de la OMS",
+  "El PHQ-9"
+ ], correct:1,
+ exp:"El WHODAS 2.0 es el instrumento recomendado por el DSM-5-TR para evaluar funcionamiento y discapacidad tras la eliminación del sistema multiaxial."},
+
+{cat:"caso",
+ prompt:"Carolina (31 años) presenta síntomas que podrían corresponder a TAG o a Trastorno Depresivo Mayor. Su terapeuta analiza cronología, desencadenantes y patrones de respuesta para distinguir entre ambas condiciones. Este proceso se llama:",
+ options:[
+  "Diagnóstico diferencial",
+  "Sobrediagnóstico",
+  "Diagnóstico dimensional"
+ ], correct:0,
+ exp:"Distinguir entre condiciones con síntomas similares para identificar cuál está presente es el proceso de diagnóstico diferencial."},
+
+{cat:"caso",
+ prompt:"Valentina (7 años) es evaluada por dificultades en lectura. Tras aplicar pruebas de inteligencia y logro académico, la psicóloga concluye que cumple criterios de Trastorno Específico del Aprendizaje con dificultad en lectura, clasificándola en una categoría discreta. Este tipo de diagnóstico es:",
+ options:[
+  "Dimensional",
+  "Categorial",
+  "Funcional"
+ ], correct:1,
+ exp:"Clasificar un trastorno en una categoría discreta (presente/ausente) según un manual es el enfoque categorial."},
+
+{cat:"caso",
+ prompt:"Daniel (25 años) es diagnosticado con Trastorno de Ansiedad Social. Su terapeuta no solo identifica la presencia del trastorno, sino que puntúa la gravedad en una escala continua (leve-moderado-grave) y documenta cómo afecta distintas áreas de su vida en diferente medida. Este enfoque es:",
+ options:[
+  "Categorial",
+  "Dimensional",
+  "Nosográfico"
+ ], correct:1,
+ exp:"Evaluar síntomas en un continuo de gravedad, en lugar de solo presente/ausente, es el enfoque dimensional."},
+
+{cat:"caso",
+ prompt:"La Dra. Torres, psicóloga forense, analiza la escena de un homicidio: evidencias físicas, modus operandi y características de la víctima. Infiere que el agresor es un varón de 30-40 años con historia de violencia familiar y rasgos antisociales. Está elaborando un:",
+ options:[
+  "Perfil victimal",
+  "Perfil criminal",
+  "Perfil sociodemográfico"
+ ], correct:1,
+ exp:"Inferir características del agresor a partir de la escena del delito es la definición de perfil criminal."},
+
+{cat:"caso",
+ prompt:"Tras un sismo, un equipo de psicólogos evalúa a los sobrevivientes de una comunidad en Oaxaca. Además de diagnosticar TEPT y depresión, documentan rasgos de personalidad, estilos de afrontamiento y recursos psicológicos de cada persona. Este documento integrador es un:",
+ options:[
+  "Diagnóstico categorial",
+  "Perfil psicológico",
+  "Análisis funcional"
+ ], correct:1,
+ exp:"El perfil psicológico integra capacidades, rasgos, estilos de afrontamiento y recursos de la persona, más allá de las etiquetas diagnósticas."},
+
+{cat:"caso",
+ prompt:"Andrés (19 años) es evaluado en un centro de internamiento juvenil tras robo con violencia. Presenta historia de crueldad con animales desde los 12 años, mentiras recurrentes y ausencia de remordimiento. El diagnóstico de Trastorno de Personalidad Antisocial corresponde a un trastorno que típicamente se consolida en:",
+ options:[
+  "La primera infancia",
+  "La adolescencia/adultez temprana",
+  "La vejez"
+ ], correct:1,
+ exp:"Los trastornos de personalidad se consolidan en la adolescencia/adultez temprana, aunque sus raíces pueden rastrearse en la infancia."},
+
+{cat:"caso",
+ prompt:"María José (6 años) es evaluada por retraso del lenguaje y dificultades de interacción social. Tras aplicar escalas de desarrollo y observar su conducta, la psicóloga diagnostica Trastorno del Espectro Autista. Este trastorno se clasifica como del:",
+ options:[
+  "Neurodesarrollo",
+  "Personalidad",
+  "Clínico episódico"
+ ], correct:0,
+ exp:"El TEA es un trastorno del neurodesarrollo que se identifica típicamente en la infancia temprana y afecta el desarrollo del sistema nervioso."},
+
+{cat:"caso",
+ prompt:"Elena (38 años) acude por síntomas depresivos. Tras la entrevista inicial, su psicóloga formula la hipótesis de un Trastorno Depresivo Mayor y, con base en ella, decide aplicar el BDI-II, una escala de ansiedad y una prueba de personalidad. En el proceso de evaluación, la hipótesis preliminar sirve para:",
+ options:[
+  "Confirmar el diagnóstico definitivo",
+  "Orientar la selección de instrumentos",
+  "Redactar el informe final"
+ ], correct:1,
+ exp:"La hipótesis diagnóstica preliminar construida en la entrevista guía qué instrumentos específicos aplicar para confirmar o descartar el diagnóstico."},
+
+{cat:"caso",
+ prompt:"Un programa para Trastorno de Pánico en una clínica de la Ciudad de México logra que el 90% de 150 pacientes reduzca sus escalas de ansiedad (p < .001), pero solo el 20% vuelve a usar el metro, asistir a reuniones o conducir. Este resultado indica:",
+ options:[
+  "Alta Adherencia pero baja Competencia",
+  "Significación estadística adecuada pero pertinencia clínica limitada",
+  "Falla de Diferenciación entre grupos"
+ ], correct:1,
+ exp:"La mejora estadística en escalas no garantiza recuperación del funcionamiento real. La pertinencia clínica exige impacto observable en la vida cotidiana."},
+
+{cat:"caso",
+ prompt:"En un ensayo de Terapia Interpersonal (TIP) para depresión posparto, los supervisores verifican que las terapeutas del grupo TIP apliquen análisis de roles y trabajo con duelos, y que el grupo control no reciba esas técnicas. Este proceso verifica:",
+ options:[
+  "La Adherencia al manual",
+  "La Diferenciación entre condiciones",
+  "La Competencia clínica"
+ ], correct:1,
+ exp:"Confirmar que cada condición aplique sus técnicas específicas y no las de la otra es verificar Diferenciación."},
+
+{cat:"caso",
+ prompt:"Patricia (45 años) completa tratamiento para Trastorno por Atracones. Sus atracones bajan de 5 por semana a 1 por semana (cambio confiable), mantiene IMC funcional, recupera autoestima y vida social, aunque su puntuación en la escala queda ligeramente sobre el punto de corte. Según Jacobson y Truax:",
+ options:[
+  "No alcanza pertinencia clínica",
+  "Alcanza pertinencia clínica por cambio confiable y funcionamiento funcional",
+  "Solo alcanza significación estadística"
+ ], correct:1,
+ exp:"Los criterios de Jacobson y Truax son cambio confiable y desplazamiento al rango funcional; Patricia cumple ambos aunque su puntaje esté cerca del corte."},
+
+{cat:"caso",
+ prompt:"Un equipo construye un protocolo para insomnio: higiene del sueño, restricción de tiempo en cama y reestructuración cognitiva. Prueban primero higiene sola, luego añaden restricción, luego añaden reestructuración, midiendo el aporte de cada adición. Este diseño es:",
+ options:[
+  "De desmantelamiento",
+  "Constructivo o aditivo",
+  "Paramétrico"
+ ], correct:1,
+ exp:"Añadir componentes sucesivamente para medir su aporte incremental es el diseño constructivo/aditivo."},
+
+{cat:"caso",
+ prompt:"La finalidad última de establecer un diagnóstico en el caso de cualquier paciente, según el método clínico, es:",
+ options:[
+  "Lograr una clasificación nosográfica exhaustiva",
+  "Determinar un tratamiento adecuado y anticipar un pronóstico",
+  "Confirmar la hipótesis causal inicial del terapeuta"
+ ], correct:1,
+ exp:"El diagnóstico no es un fin en sí mismo: su utilidad clínica radica en orientar el tratamiento y estimar el curso probable (pronóstico)."},
+
+{cat:"caso",
+ prompt:"Con la eliminación del sistema multiaxial en el DSM-5, los trastornos de personalidad que antes se registraban en el Eje II se documentan ahora:",
+ options:[
+  "En un apéndice separado",
+  "Junto con el resto de los trastornos clínicos, sin jerarquía de ejes",
+  "Solo si coexisten con un trastorno del antiguo Eje I"
+ ], correct:1,
+ exp:"El DSM-5 eliminó el modelo de ejes: todos los trastornos se integran en un solo listado diagnóstico."},
+
+{cat:"caso",
+ prompt:"En el informe de Hugo (30 años, candidato a un empleo), el psicólogo describe su nivel intelectual, estilo de afrontamiento al estrés laboral, estabilidad emocional y recursos psicológicos. Esta sección corresponde a un:",
+ options:[
+  "Perfil sociodemográfico",
+  "Perfil psicológico",
+  "Diagnóstico categorial"
+ ], correct:1,
+ exp:"El perfil psicológico integra capacidades, rasgos y estilos de funcionamiento; no es un listado demográfico ni una etiqueta categorial."},
+
+{cat:"caso",
+ prompt:"Un perito en criminología, a partir de evidencias dejadas en una escena de robo con violencia, infiere edad probable, ocupación y hábitos del agresor. Está elaborando un:",
+ options:[
+  "Perfil victimal",
+  "Perfil criminal",
+  "Perfil sociodemográfico"
+ ], correct:1,
+ exp:"Inferir características del agresor a partir de la escena del delito es perfil criminal; el perfil victimal se centra en la víctima."},
+
+/* ================= CORRESPONDENCIA BASADA EN CASOS ================= */
+
+{cat:"relacion",
+ prompt:"En el caso de Lucía (28 años, TEPT tras accidente), durante la evaluación se registran tres manifestaciones. Relacione cada manifestación con su categoría clínica.",
+ colA:{title:"Manifestaciones de Lucía", items:[
+   "1. Lucía refiere pesadillas recurrentes con el accidente",
+   "2. El terapeuta observa taquicardia y sudoración durante la narrativa",
+   "3. Conjunto de insomnio, hipervigilancia, evitación y reexperimentación"
+ ]},
+ colB:{title:"Categorías", items:[
+   "a) Síntoma (subjetivo)",
+   "b) Signo (objetivo)",
+   "c) Síndrome (agrupación)"
+ ]},
+ options:["1-a, 2-b, 3-c", "1-b, 2-a, 3-c", "1-c, 2-b, 3-a"], correct:0,
+ exp:"Las pesadillas reportadas son síntoma (a); la taquicardia observable es signo (b); la agrupación consistente de síntomas y signos constituye el síndrome (c)."},
+
+{cat:"relacion",
+ prompt:"En un estudio de terapia para ansiedad social en el Hospital Juárez, se observan las siguientes prácticas del equipo. Relacione cada práctica con el criterio de integridad de Kazdin que evalúa.",
+ colA:{title:"Prácticas observadas", items:[
+   "1. Los terapeutas siguen el manual paso a paso en cada sesión",
+   "2. Adaptan las metáforas al contexto cultural de los pacientes",
+   "3. Verifican que el grupo control no reciba técnicas del experimental"
+ ]},
+ colB:{title:"Criterios de Kazdin", items:[
+   "a) Adherencia",
+   "b) Competencia",
+   "c) Diferenciación"
+ ]},
+ options:["1-a, 2-b, 3-c", "1-b, 2-a, 3-c", "1-c, 2-b, 3-a"], correct:0,
+ exp:"Seguir el manual es Adherencia (a); adaptar con pericia es Competencia (b); verificar que las condiciones no se mezclen es Diferenciación (c)."},
+
+{cat:"relacion",
+ prompt:"En el caso de Mateo (8 años, dificultades escolares), el psicólogo aplica tres enfoques diagnósticos. Relacione cada aplicación con el tipo de diagnóstico.",
+ colA:{title:"Aplicaciones en Mateo", items:[
+   "1. Mateo cumple criterios de TDAH (presente/ausente)",
+   "2. Su ansiedad se puntúa de 0 a 10 en una escala",
+   "3. Se identifica que sus rabietas ocurren tras demandas académicas"
+ ]},
+ colB:{title:"Tipos de diagnóstico", items:[
+   "a) Categorial",
+   "b) Dimensional",
+   "c) Funcional"
+ ]},
+ options:["1-a, 2-b, 3-c", "1-b, 2-c, 3-a", "1-c, 2-a, 3-b"], correct:0,
+ exp:"Clasificar presente/ausente es categorial (a); puntuar en un continuo es dimensional (b); identificar relaciones conducta-ambiente es funcional (c)."},
+
+{cat:"relacion",
+ prompt:"La Dra. Torres trabaja en tres casos forenses distintos. Relacione cada situación con el tipo de perfil que elabora.",
+ colA:{title:"Situaciones forenses", items:[
+   "1. Infiere características del agresor en un homicidio",
+   "2. Evalúa el impacto psicológico en una víctima de asalto",
+   "3. Describe edad, escolaridad y ocupación del evaluado"
+ ]},
+ colB:{title:"Tipos de perfil", items:[
+   "a) Perfil criminal",
+   "b) Perfil victimal",
+   "c) Perfil sociodemográfico"
+ ]},
+ options:["1-a, 2-b, 3-c", "1-b, 2-a, 3-c", "1-c, 2-b, 3-a"], correct:0,
+ exp:"Inferir rasgos del agresor es perfil criminal (a); evaluar impacto en la víctima es perfil victimal (b); describir datos básicos es perfil sociodemográfico (c)."},
+
+{cat:"relacion",
+ prompt:"En el informe de Ana (12 años, problemas de sueño), se incluyen tres apartados. Relacione cada apartado con el contenido específico del caso.",
+ colA:{title:"Apartados del informe", items:[
+   "1. Motivo de consulta",
+   "2. Historia del desarrollo",
+   "3. Integración diagnóstica"
+ ]},
+ colB:{title:"Contenido del caso", items:[
+   "a) \"La madre refiere: 'Mi hija no duerme desde hace 3 meses'\"",
+   "b) Ana caminó a los 14 meses, habló a los 2 años, sin complicaciones perinatales",
+   "c) Los resultados sugieren Trastorno de Ansiedad Generalizada"
+ ]},
+ options:["1-a, 2-b, 3-c", "1-b, 2-c, 3-a", "1-c, 2-a, 3-b"], correct:0,
+ exp:"El motivo de consulta es la razón explícita (a); la historia del desarrollo recoge antecedentes evolutivos (b); la integración diagnóstica sintetiza los hallazgos (c)."},
+
+{cat:"relacion",
+ prompt:"En la evaluación de Pedro (45 años, consumo de alcohol), el psicólogo realiza tres actividades. Relacione cada actividad con su objetivo.",
+ colA:{title:"Actividades", items:[
+   "1. Aplica el MMPI-2",
+   "2. Analiza por qué Pedro bebe tras discutir con su esposa",
+   "3. Asigna el código F41.1 según CIE-11"
+ ]},
+ colB:{title:"Objetivos", items:[
+   "a) Obtener datos estandarizados y comparables",
+   "b) Comprender la función de la conducta",
+   "c) Asignar código nosológico para comunicación interprofesional"
+ ]},
+ options:["1-a, 2-b, 3-c", "1-b, 2-c, 3-a", "1-c, 2-a, 3-b"], correct:0,
+ exp:"Los instrumentos estandarizados aportan datos comparables (a); el análisis funcional comprende la función de la conducta (b); la clasificación asigna un código común (c)."},
+
+{cat:"relacion",
+ prompt:"La Dra. Vega compara dos manuales diagnósticos en su práctica clínica. Relacione cada manual con su característica.",
+ colA:{title:"Manuales", items:[
+   "1. DSM-5-TR",
+   "2. CIE-11"
+ ]},
+ colB:{title:"Características", items:[
+   "a) Publicado por la APA, con especificadores clínicos detallados",
+   "b) Publicado por la OMS"
+ ]},
+ options:["1-a, 2-b", "1-b, 2-a", "1-a, 2-a"], correct:0,
+ exp:"El DSM-5-TR es de la Asociación Americana de Psiquiatría con especificadores; la CIE-11 es de la Organización Mundial de la Salud."},
+
+{cat:"relacion",
+ prompt:"En el caso de Julia (30 años, depresión), el profesor explica cuatro conceptos. Relacione cada concepto con su aplicación al caso.",
+ colA:{title:"Conceptos", items:[
+   "1. Nosografía",
+   "2. Nosología",
+   "3. Signo",
+   "4. Síntoma"
+ ]},
+ colB:{title:"Aplicación al caso de Julia", items:[
+   "a) Clasificar su cuadro como Trastorno Depresivo Mayor",
+   "b) Estudiar las causas genéticas y ambientales de su depresión",
+   "c) Llanto observable durante la entrevista",
+   "d) Julia refiere tristeza profunda y desesperanza"
+ ]},
+ options:["1-a, 2-b, 3-c, 4-d", "1-b, 2-a, 3-d, 4-c", "1-c, 2-d, 3-a, 4-b"], correct:0,
+ exp:"Nosografía clasifica (a); nosología estudia causas (b); el llanto observable es signo (c); la tristeza reportada es síntoma (d)."},
+
+{cat:"relacion",
+ prompt:"En el tratamiento de Rosa (40 años, fobia a volar), el supervisor evalúa tres aspectos. Relacione cada aspecto con el concepto correspondiente.",
+ colA:{title:"Aspectos evaluados", items:[
+   "1. El terapeuta aplica exposición gradual según el manual",
+   "2. El terapeuta maneja con pericia la resistencia de Rosa a abordar el avión simulado",
+   "3. Se verifica que el grupo control no reciba exposición"
+ ]},
+ colB:{title:"Conceptos", items:[
+   "a) Adherencia",
+   "b) Competencia",
+   "c) Diferenciación"
+ ]},
+ options:["1-a, 2-b, 3-c", "1-b, 2-a, 3-c", "1-c, 2-b, 3-a"], correct:0,
+ exp:"Aplicar el manual es Adherencia (a); manejar con pericia situaciones difíciles es Competencia (b); mantener fronteras entre condiciones es Diferenciación (c)."},
+
+{cat:"relacion",
+ prompt:"En el proceso diagnóstico de Iván (22 años, primera consulta), se realizan distintas actividades. Relacione cada actividad con su momento lógico.",
+ colA:{title:"Actividades", items:[
+   "1. Recoger síntomas y signos",
+   "2. Formular hipótesis diagnóstica",
+   "3. Contrastar con la nosología",
+   "4. Establecer pronóstico y tratamiento"
+ ]},
+ colB:{title:"Momentos del método clínico", items:[
+   "a) Fase de exploración inicial",
+   "b) Fase de hipótesis",
+   "c) Fase de clasificación",
+   "d) Fase de intervención"
+ ]},
+ options:["1-a, 2-b, 3-c, 4-d", "1-b, 2-c, 3-a, 4-d", "1-c, 2-a, 3-d, 4-b"], correct:0,
+ exp:"Se explora (a), se formula hipótesis (b), se clasifica (c) y se interviene (d)."},
+
+/* ================= ORDENAMIENTO BASADO EN CASOS ================= */
+
+{cat:"orden",
+ prompt:"En el caso de Elena (38 años, depresión), la psicóloga sigue tres pasos en la evaluación. Ordénelos desde lo más general hasta lo más específico:",
+ steps:["Elaborar el perfil psicológico de Elena","Recoger datos sociodemográficos de Elena","Establecer diagnóstico de Trastorno Depresivo Mayor"],
+ options:["2 - 1 - 3", "1 - 3 - 2", "3 - 2 - 1"], correct:0,
+ exp:"Se parte de datos sociodemográficos (2), se avanza al perfil psicológico (1) y se concluye con el diagnóstico específico (3)."},
+
+{cat:"orden",
+ prompt:"En el informe de Hugo (10 años, problemas escolares), ordene los apartados tal como deben aparecer:",
+ steps:["Integración diagnóstica: Discalculia","Motivo de consulta: 'Bajo rendimiento en matemáticas'","Historia del desarrollo: hitos evolutivos de Hugo","Identificación del problema: dificultades específicas en cálculo"],
+ options:["2 - 4 - 3 - 1", "1 - 2 - 3 - 4", "4 - 2 - 1 - 3"], correct:0,
+ exp:"El informe inicia con motivo de consulta (2), identifica el problema (4), profundiza en historia del desarrollo (3) y cierra con integración diagnóstica (1)."},
+
+{cat:"orden",
+ prompt:"La Dra. Vega evalúa a Camila (25 años, posible TAG). Ordene los pasos que sigue en el proceso psicométrico:",
+ steps:["Análisis de resultados del BAI y entrevista","Generar hipótesis: posible TAG","Aplicar entrevista estructurada y BAI","Confirmar o descartar el diagnóstico de TAG"],
+ options:["2 - 3 - 1 - 4", "3 - 2 - 4 - 1", "1 - 2 - 3 - 4"], correct:0,
+ exp:"Se genera hipótesis (2), se aplican instrumentos (3), se analizan resultados (1) y se confirma o descarta (4)."},
+
+{cat:"orden",
+ prompt:"En el diagnóstico categorial de Nora (16 años, posible depresión), ordene los pasos:",
+ steps:["Integrar juicio clínico con todos los datos","Recabar antecedentes familiares de depresión","Clasificar según DSM-5-TR como Trastorno Depresivo Mayor"],
+ options:["2 - 3 - 1", "1 - 2 - 3", "3 - 1 - 2"], correct:0,
+ exp:"Se recaban antecedentes (2), se clasifica según el manual (3) y se integra en juicio clínico (1)."},
+
+{cat:"orden",
+ prompt:"Joaquín (7 años) es evaluado por TEA. Ordene los tipos de trastornos por inicio típico, del más temprano al más tardío:",
+ steps:["Trastorno del neurodesarrollo (TEA de Joaquín)","Trastorno clínico episódico (posible depresión futura)","Trastorno de la personalidad (consolidación en adolescencia)"],
+ options:["1 - 3 - 2", "2 - 1 - 3", "3 - 2 - 1"], correct:0,
+ exp:"Los trastornos del neurodesarrollo se identifican en la infancia (1), los de personalidad se consolidan en adolescencia/adultez temprana (3), y los episódicos pueden aparecer en cualquier etapa posterior (2)."},
+
+{cat:"orden",
+ prompt:"En el diagnóstico de Silvia (50 años) según el modelo del DSM-5-TR, ordene los pasos:",
+ steps:["Identificar factores psicosociales (divorcio reciente)","Identificar Trastorno Depresivo Mayor principal","Evaluar funcionamiento con WHODAS 2.0","Considerar hipotiroidismo como condición médica relevante"],
+ options:["2 - 4 - 1 - 3", "1 - 2 - 3 - 4", "4 - 1 - 2 - 3"], correct:0,
+ exp:"El DSM-5-TR propone: trastorno principal (2), condiciones médicas (4), factores psicosociales (1) y funcionamiento (3)."},
+
+{cat:"orden",
+ prompt:"El Dr. Lara recibe a Iván (22 años) en primera consulta. Ordene los pasos del método clínico que sigue:",
+ steps:["Contrastar información con nosología DSM-5-TR","Formular hipótesis diagnóstica","Recoger síntomas y signos de Iván","Establecer pronóstico y plan de tratamiento"],
+ options:["3 - 2 - 1 - 4", "2 - 3 - 4 - 1", "1 - 3 - 2 - 4"], correct:0,
+ exp:"Se recogen síntomas y signos (3), se formula hipótesis (2), se contrasta con nosología (1) y se establece pronóstico/tratamiento (4)."},
+
+{cat:"orden",
+ prompt:"En un estudio de desmantelamiento sobre el protocolo de Joaquín (fobia a perros), ordene la secuencia:",
+ steps:["Comparar protocolo completo vs. protocolo sin relajación","Seleccionar componente a probar: relajación","Definir protocolo completo (exposición + relajación + reestructuración)","Interpretar si la relajación es esencial"],
+ options:["3 - 2 - 1 - 4", "2 - 1 - 3 - 4", "1 - 3 - 2 - 4"], correct:0,
+ exp:"Se define el protocolo completo (3), se elige el componente (2), se compara (1) y se interpreta (4)."},
+
+{cat:"orden",
+ prompt:"En la elaboración del perfil de Rosa (40 años, evaluación prequirúrgica), ordene los pasos desde lo más general hasta lo más específico:",
+ steps:["Elaborar perfil psicológico (rasgos, afrontamiento)","Recoger perfil sociodemográfico (edad, ocupación, familia)","Establecer recomendaciones clínicas específicas"],
+ options:["2 - 1 - 3", "1 - 3 - 2", "3 - 2 - 1"], correct:0,
+ exp:"Se parte de datos sociodemográficos (2), se avanza al perfil psicológico (1) y se concluye con recomendaciones específicas (3)."},
+
+{cat:"orden",
+ prompt:"En la autopsia psicológica de Marcos (fallecido por suicidio), ordene los pasos que sigue el equipo forense:",
+ steps:["Integrar hallazgos en un perfil psicológico retrospectivo","Recoger entrevistas con familiares y documentos","Analizar factores de riesgo y protectores identificados"],
+ options:["2 - 3 - 1", "1 - 2 - 3", "3 - 1 - 2"], correct:0,
+ exp:"Se recoge información (2), se analizan factores (3) y se integra el perfil retrospectivo (1)."},
+
+/* ================= COMPLETAR BASADO EN CASOS ================= */
+
+{cat:"completar",
+ prompt:"En el caso de Sofía (30 años, duelo complicado por muerte de su madre), la terapeuta integra historia clínica, resultados de pruebas y análisis funcional para formular una <em class='blank'>&nbsp;</em> que guíe el tratamiento.",
+ options:["Lista exhaustiva de todos los problemas de Sofía","Hipótesis explicativa comprensiva del caso","Cronología detallada de eventos vitales"], correct:1,
+ exp:"El diagnóstico integrado se expresa como hipótesis explicativa que da sentido conjunto a la información, no como listado ni cronología."},
+
+{cat:"completar",
+ prompt:"En la evaluación de Tomás (40 años, posible TDAH adulto), la información pertinente es aquella que resulta <em class='blank'>&nbsp;</em> para comprender su caso y <em class='blank'>&nbsp;</em>.",
+ options:["Estadísticamente significativa / publicable","Relevante y útil / responde a las preguntas clínicas planteadas","De fácil acceso / reduce el tiempo de evaluación"], correct:1,
+ exp:"La pertinencia se define por la relevancia y utilidad clínica: responder a las preguntas que motivaron la evaluación."},
+
+{cat:"completar",
+ prompt:"Alicia (35 años, fobia a volar) completa tratamiento: reduce significativamente sus unidades subjetivas de ansiedad y vuelve a viajar para visitar a su familia. Según Kazdin, alcanza <em class='blank'>&nbsp;</em>.",
+ options:["Significación estadística","Pertinencia clínica","Validez ecológica"], correct:1,
+ exp:"Hay cambio confiable y desplazamiento al funcionamiento normal con impacto en la vida real: pertinencia clínica."},
+
+{cat:"completar",
+ prompt:"En el análisis funcional de Bruno (14 años, autolesiones), se identifican antecedentes (peleas familiares), conducta (cortes) y <em class='blank'>&nbsp;</em> que la mantienen (alivio de la tensión emocional).",
+ options:["Los consecuentes","Los rasgos de personalidad","Los códigos diagnósticos"], correct:0,
+ exp:"El modelo ABC relaciona Antecedente-Conducta-Consecuente; son los consecuentes los que mantienen la conducta."},
+
+{cat:"completar",
+ prompt:"La perito Carmen elabora un <em class='blank'>&nbsp;</em> para inferir características del agresor en un caso de robo con violencia, mientras que en el caso de la persona asaltada elabora un <em class='blank'>&nbsp;</em>.",
+ options:["Perfil psicológico / diagnóstico clínico","Perfil criminal / perfil victimal","Perfil sociodemográfico / perfil psicológico"], correct:1,
+ exp:"El perfil criminal infiere rasgos del agresor; el perfil victimal evalúa el impacto en quien sufrió el delito."},
+
+{cat:"completar",
+ prompt:"Daniela (23 años) es diagnosticada con TAG: el diagnóstico <em class='blank'>&nbsp;</em> clasifica su trastorno como presente, mientras que el diagnóstico <em class='blank'>&nbsp;</em> evalúa su gravedad en un continuo.",
+ options:["Dimensional / categorial","Categorial / dimensional","Funcional / categorial"], correct:1,
+ exp:"Categorial = presente/ausente; dimensional = continuo de gravedad."},
+
+{cat:"completar",
+ prompt:"En la exploración de Emilio (55 años, posible demencia), el neurólogo observa temblor y bradikinesia (<em class='blank'>&nbsp;</em>), mientras que Emilio refiere sentirse 'olvidadizo' (<em class='blank'>&nbsp;</em>).",
+ options:["Síntomas / signos","Signos / síntomas","Síndromes / signos"], correct:1,
+ exp:"Signos = objetivos y medibles; síntomas = subjetivos y reportados por el paciente."},
+
+{cat:"completar",
+ prompt:"En el estudio de Fernanda sobre TCC vs. terapia de apoyo para insomnio, si ambos grupos terminan aplicando las mismas técnicas, se compromete principalmente la <em class='blank'>&nbsp;</em> del diseño.",
+ options:["Capacidad de atribuir el efecto a cada tratamiento (Diferenciación)","Fiabilidad de los instrumentos","Pertinencia clínica de los resultados"], correct:0,
+ exp:"Sin Diferenciación no puede atribuirse el efecto a los ingredientes de cada tratamiento porque las condiciones se solapan."},
+
+{cat:"completar",
+ prompt:"En el tratamiento de Marta (50 años, depresión), la terapeuta sigue el manual al pie de la letra pero no ajusta el lenguaje al nivel educativo de Marta ni responde a su llanto. Según Kazdin, hay alta <em class='blank'>&nbsp;</em> pero baja <em class='blank'>&nbsp;</em>.",
+ options:["Adherencia / Competencia","Competencia / Adherencia","Diferenciación / Adherencia"], correct:0,
+ exp:"Seguir el manual es Adherencia; hacerlo sin sensibilidad clínica ni adaptación es falla de Competencia."},
+
+{cat:"completar",
+ prompt:"En el pronóstico de Javier (29 años, primer episodio psicótico), el psiquiatra estima la evolución probable del cuadro con y sin tratamiento. El <em class='blank'>&nbsp;</em> es la predicción razonada sobre el curso del trastorno, mientras que el <em class='blank'>&nbsp;</em> es el plan de intervención.",
+ options:["Pronóstico / tratamiento","Tratamiento / pronóstico","Diagnóstico / pronóstico"], correct:0,
+ exp:"El pronóstico predice el curso probable; el tratamiento es el plan de intervención específico."}
+
+];
+
+const CAT_LABELS = {
+  caso: "Casos clínicos",
+  relacion: "Correspondencia",
+  orden: "Ordenamiento",
+  completar: "Completar"
+};
+const CAT_ORDER = ["caso","relacion","orden","completar"];
+
+let state = { questions: [], idx: 0, answered: [], correctCount: 0, perCat: {} };
+let selectedCount = 20;
+let selectedCats = new Set(CAT_ORDER);
+
+function countsByCat(){
+  const c = {};
+  CAT_ORDER.forEach(k=>c[k]=0);
+  BANK.forEach(q=>c[q.cat]++);
+  return c;
+}
+
+function buildSetup(){
+  const counts = countsByCat();
+  const total = BANK.length;
+  const pillOptions = [10,20,30,total];
+  const pillWrap = document.getElementById('countPills');
+  pillWrap.innerHTML = "";
+  pillOptions.forEach(n=>{
+    const b = document.createElement('button');
+    b.className = 'pill-btn' + (n===selectedCount ? ' active':'');
+    b.textContent = n===total ? `Todos (${total})` : n;
+    b.onclick = ()=>{ selectedCount = n; buildSetup(); };
+    pillWrap.appendChild(b);
+  });
+  const listWrap = document.getElementById('catChecklist');
+  listWrap.innerHTML = "";
+  CAT_ORDER.forEach(cat=>{
+    const row = document.createElement('label');
+    row.className = 'check-row';
+    row.innerHTML = `<input type="checkbox" ${selectedCats.has(cat)?'checked':''} data-cat="${cat}">
+      <span class="cname">${CAT_LABELS[cat]}</span>
+      <span class="ccount">${counts[cat]} disponibles</span>`;
+    row.querySelector('input').addEventListener('change', (e)=>{
+      if(e.target.checked) selectedCats.add(cat); else selectedCats.delete(cat);
+      validateStart();
+    });
+    listWrap.appendChild(row);
+  });
+  validateStart();
+}
+
+function validateStart(){
+  const startBtn = document.getElementById('startBtn');
+  const pool = BANK.filter(q=>selectedCats.has(q.cat));
+  startBtn.disabled = pool.length === 0;
+}
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  const pool = shuffle(BANK.filter(q=>selectedCats.has(q.cat)));
+  const n = Math.min(selectedCount, pool.length);
+  const chosen = pool.slice(0, n).map(q=>{
+    const order = shuffle(q.options.map((opt,i)=>i));
+    const newOptions = order.map(i=>q.options[i]);
+    const newCorrect = order.indexOf(q.correct);
+    return Object.assign({}, q, {options:newOptions, correct:newCorrect});
+  });
+  state = {
+    questions: chosen,
+    idx: 0,
+    answered: new Array(chosen.length).fill(false),
+    correctFlags: new Array(chosen.length).fill(false),
+    correctCount: 0,
+    perCat: {}
+  };
+  CAT_ORDER.forEach(c=>state.perCat[c] = {correct:0, total:0});
+  chosen.forEach(q=>state.perCat[q.cat].total++);
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('results').classList.add('hidden');
+  document.getElementById('exam').classList.remove('hidden');
+  renderTabs();
+  renderQuestion();
+});
+
+function renderTabs(){
+  const row = document.getElementById('tabsRow');
+  row.innerHTML = "";
+  const current = state.questions[state.idx];
+  CAT_ORDER.forEach(cat=>{
+    if(!state.perCat[cat] || state.perCat[cat].total===0) return;
+    const t = document.createElement('div');
+    t.className = 'tab' + (current && current.cat===cat ? ' active':'');
+    t.textContent = CAT_LABELS[cat];
+    row.appendChild(t);
+  });
+}
+
+function renderQuestion(){
+  const total = state.questions.length;
+  const q = state.questions[state.idx];
+  renderTabs();
+  document.getElementById('progressLabel').textContent = `Reactivo ${state.idx+1} de ${total}`;
+  document.getElementById('scoreChip').textContent = `Aciertos: ${state.correctCount}/${state.idx}`;
+  document.getElementById('barFill').style.width = `${(state.idx/total)*100}%`;
+  const letters = ['a','b','c','d'];
+  let html = `<div class="qnum">${CAT_LABELS[q.cat]} · Reactivo ${state.idx+1}</div>`;
+  html += `<div class="qprompt">${q.prompt}</div>`;
+  if(q.cat === 'relacion'){
+    html += `<div class="cols">
+      <div class="col-box"><div class="col-title">${q.colA.title}</div><ul style="list-style:none;padding-left:0;">${q.colA.items.map(it=>`<li style="margin-bottom:8px;">${it}</li>`).join('')}</ul></div>
+      <div class="col-box"><div class="col-title">${q.colB.title}</div><ul style="list-style:none;padding-left:0;">${q.colB.items.map(it=>`<li style="margin-bottom:8px;">${it}</li>`).join('')}</ul></div>
+    </div>`;
+  }
+  if(q.cat === 'orden'){
+    html += `<div class="steps-box"><div class="col-title">Elementos a ordenar</div><ul>${q.steps.map((s,i)=>`<li><strong>${i+1}.</strong> ${s}</li>`).join('')}</ul></div>`;
+  }
+  html += `<div class="options" id="optionsWrap">`;
+  q.options.forEach((opt,i)=>{
+    html += `<div class="opt" data-i="${i}"><span class="letter">${letters[i]})</span><span>${opt}</span></div>`;
+  });
+  html += `</div>`;
+  html += `<button class="check-btn" id="checkBtn" disabled>Comprobar respuesta</button>`;
+  html += `<div id="feedbackWrap"></div>`;
+  const qcard = document.getElementById('qcard');
+  qcard.innerHTML = html;
+  let selected = null;
+  const optEls = qcard.querySelectorAll('.opt');
+  optEls.forEach(el=>{
+    el.addEventListener('click', ()=>{
+      if(state.answered[state.idx]) return;
+      optEls.forEach(o=>o.classList.remove('selected'));
+      el.classList.add('selected');
+      selected = parseInt(el.dataset.i,10);
+      document.getElementById('checkBtn').disabled = false;
+    });
+  });
+  document.getElementById('checkBtn').addEventListener('click', ()=>{
+    if(selected===null || state.answered[state.idx]) return;
+    lockAndFeedback(selected);
+  });
+}
+
+function lockAndFeedback(selected){
+  const q = state.questions[state.idx];
+  const isCorrect = selected === q.correct;
+  state.answered[state.idx] = true;
+  state.correctFlags[state.idx] = isCorrect;
+  if(isCorrect){
+    state.correctCount++;
+    state.perCat[q.cat].correct++;
+  }
+  const optEls = document.querySelectorAll('#optionsWrap .opt');
+  optEls.forEach((el,i)=>{
+    el.classList.add('locked');
+    if(i === q.correct) el.classList.add('correct');
+    else if(i === selected) el.classList.add('incorrect');
+    else el.classList.add('dim');
+  });
+  document.getElementById('checkBtn').remove();
+  const letters = ['a','b','c','d'];
+  const fb = document.getElementById('feedbackWrap');
+  fb.innerHTML = `
+    <div class="feedback ${isCorrect?'ok':'bad'}">
+      <div class="stamp ${isCorrect?'ok':'bad'}">${isCorrect?'CORRECTO':'INCORRECTO'}</div>
+      <strong>${isCorrect ? '¡Bien identificado!' : `La respuesta correcta es la opción "${letters[q.correct]}"`}</strong>
+      ${q.exp}
+    </div>
+    <button class="next-btn" id="nextBtn">${state.idx+1 < state.questions.length ? 'Siguiente reactivo →' : 'Ver resultados finales →'}</button>
+  `;
+  document.getElementById('scoreChip').textContent = `Aciertos: ${state.correctCount}/${state.idx+1}`;
+  document.getElementById('barFill').style.width = `${((state.idx+1)/state.questions.length)*100}%`;
+  document.getElementById('nextBtn').addEventListener('click', ()=>{
+    if(state.idx+1 < state.questions.length){
+      state.idx++;
+      renderQuestion();
+      window.scrollTo({top:0, behavior:'smooth'});
+    } else {
+      showResults();
+    }
+  });
+}
+
+function showResults(){
+  document.getElementById('exam').classList.add('hidden');
+  document.getElementById('results').classList.remove('hidden');
+  document.getElementById('reviewCard').classList.add('hidden');
+  const total = state.questions.length;
+  const score10 = (state.correctCount/total)*10;
+  const pct = Math.round((state.correctCount/total)*100);
+  document.getElementById('scoreRing').style.setProperty('--pct', pct);
+  document.getElementById('scoreNum').textContent = score10.toFixed(1);
+  let title, msg;
+  if(score10 >= 9){ title="Dominio sólido"; msg="Tu manejo de los conceptos centrales de la materia es consistente. Repasa únicamente los reactivos que fallaste."; }
+  else if(score10 >= 7){ title="Buen desempeño"; msg="Vas bien encaminado. Revisa la retroalimentación de los reactivos fallados para cerrar los últimos huecos."; }
+  else if(score10 >= 5){ title="En proceso"; msg="Hay conceptos que conviene reforzar antes del examen. Usa la retroalimentación detallada como guía de estudio."; }
+  else { title="Necesita refuerzo"; msg="Conviene volver a revisar los temas base (integridad del tratamiento, método clínico, DSM-5-TR y tipos de diagnóstico) antes de un nuevo intento."; }
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultMsg').textContent = `${state.correctCount} de ${total} correctas (${pct}%). ${msg}`;
+  const bdWrap = document.getElementById('breakdownList');
+  bdWrap.innerHTML = "";
+  CAT_ORDER.forEach(cat=>{
+    const d = state.perCat[cat];
+    if(!d || d.total===0) return;
+    const p = Math.round((d.correct/d.total)*100);
+    const row = document.createElement('div');
+    row.className = 'bd-row';
+    row.innerHTML = `<div class="bd-name">${CAT_LABELS[cat]}</div>
+      <div class="bd-track"><div class="bd-fill" style="width:${p}%"></div></div>
+      <div class="bd-frac">${d.correct}/${d.total}</div>`;
+    bdWrap.appendChild(row);
+  });
+  const letters = ['a','b','c','d'];
+  const reviewWrap = document.getElementById('reviewList');
+  reviewWrap.innerHTML = "";
+  state.questions.forEach((q,i)=>{
+    const ok = state.correctFlags[i];
+    const item = document.createElement('div');
+    item.className = 'review-item';
+    item.innerHTML = `
+      <span class="tag-badge">${CAT_LABELS[q.cat]} · #${i+1}</span>
+      <div class="rq">${q.prompt.replace(/<em class='blank'>&nbsp;<\/em>/g,'____')}</div>
+      <div class="ra ${ok?'good':'bad'}">${ok ? '✔ Respondiste correctamente' : '✘ Respuesta correcta: ' + letters[q.correct] + ') ' + q.options[q.correct]}</div>
+      <div class="rexp">${q.exp}</div>
+    `;
+    reviewWrap.appendChild(item);
+  });
+}
+
+document.getElementById('retryBtn').addEventListener('click', ()=>{
+  document.getElementById('results').classList.add('hidden');
+  document.getElementById('setup').classList.remove('hidden');
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+document.getElementById('reviewBtn').addEventListener('click', ()=>{
+  const card = document.getElementById('reviewCard');
+  card.classList.toggle('hidden');
+  if(!card.classList.contains('hidden')) card.scrollIntoView({behavior:'smooth'});
+});
+
+buildSetup();
+</script>
+</body>
+</html>
